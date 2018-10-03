@@ -1,0 +1,104 @@
+---
+- name: Generate Proxy certs 
+  hosts: masters[0] 
+  tasks:
+  - name: Create OCP Signed CA key and cert for the proxy for internal communication
+    shell: "openssl x509 -text -noout -in /etc/origin/master/ca.crt | grep signer | head -n 1 |awk {'print $2'} | cut -d \"=\" -f2"
+    register: ocpsignerout
+
+  - name: Print OCP Cert Signer Output 
+    debug: 
+      var: ocpsignerout
+
+  - name: Print First Master Host 
+    debug: 
+      msg: "The first masrt host is : {{ groups['masters'][0] }}"
+      #var: groups['masters'][0]
+
+  - name: Create OCP Signed CA key and cert for the proxy for internal communication
+    shell: "oc adm ca create-signer-cert --cert=/etc/origin/master/proxyca.crt --key=/etc/origin/master/proxyca.key --name={{ ocpsignerout.stdout }} --serial=/etc/origin/master/proxyca.serial.txt"
+    register: proxycacreateout
+      
+  - name: Print Proxy CA Certs Creation Output 
+    debug: 
+      var: proxycacreateout
+
+  - name: Create OCP Signed API certs for the proxy for internal communication
+    shell: "oc adm create-api-client-config --certificate-authority=/etc/origin/master/proxyca.crt --client-dir=/etc/origin/master/proxy --signer-cert=/etc/origin/master/proxyca.crt --signer-key=/etc/origin/master/proxyca.key --signer-serial=/etc/origin/master/proxyca.serial.txt  --user='system:proxy'"
+    register: proxycertscreateout
+
+  - name: Create the combined key and cert pem file for the proxy to be used on the proxy server
+    shell: "cat /etc/origin/master/proxy/proxyca.crt /etc/origin/master/proxy/proxyca.key > /etc/origin/master/proxy/authproxy.pem" 
+
+  - name: Print Proxy Certs Creation Output 
+    debug: 
+      var: proxycertscreateout 
+
+  - name: Print All masters 
+    debug: 
+      msg: "The Current master is {{ item }}" 
+      #var: proxycertscreateout 
+    with_items: "{{ groups['masters'] }}"
+
+  - name: Archive proxy certificates Generated above for the other masters
+    archive:
+      path:
+      - /etc/origin/master/proxyca.crt
+      - /etc/origin/master/proxyca.key
+      - /etc/origin/master/proxy/*
+      dest: /etc/origin/master/proxy/proxycerts-masters.tar
+    register: proxycertsarchiveout
+
+  - name: Archive proxy certificates Generated above for the loadbalancer 
+    archive:
+      path:
+      - /etc/origin/master/proxy/proxyca.crt
+      - /etc/origin/master/proxy/authproxy.pem
+      dest: /etc/origin/master/proxy/proxycerts-lb.tar
+    register: proxycertsarchivelbout
+
+  - name: Print Cert Archive Create output
+    debug:
+      msg: "The archive creation output is {{ proxycertsarchiveout }}"
+
+  - name: Copy API certs for the proxy to the Bastion Host 
+    fetch:
+      src: "{{ item }}" 
+      dest: /tmp/
+      flat: yes
+    with_items:
+      - /etc/origin/master/proxy/proxycerts-lb.tar
+      - /etc/origin/master/proxy/proxycerts-masters.tar
+    register: proxycertscopytobout
+
+
+- name: Copy proxy Certs to all masters
+  hosts: masters
+  tasks: 
+  - name: Copy API certs for the proxy to all masters
+    unarchive:
+      copy: yes 
+      src: /tmp/proxycerts-masters.tar 
+      dest: /etc/origin/master
+    with_items: "{{ groups['masters'] }}"
+    when: inventory_hostname_short != groups['masters'][0]  
+    register: proxycertscopyout
+
+  - name: Print Proxy Certs Copy to Masters
+    debug: 
+      var: proxycertscopyout 
+
+
+- name: Copy proxy Certs to all loadbalancer
+  hosts: lb
+  tasks: 
+  - name: Copy API certs for the proxy to all masters
+    unarchive:
+      copy: yes 
+      src: /tmp/proxycerts-lb.tar
+      dest: /etc/pki/tls
+    register: proxycertscopylbout
+
+  - name: Print Proxy Certs Copy to Masters
+    debug: 
+      var: proxycertscopylbout 
