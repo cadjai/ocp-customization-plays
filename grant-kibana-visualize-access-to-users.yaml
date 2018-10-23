@@ -1,0 +1,109 @@
+---
+- name: Generate Proxy certs 
+  hosts: masters[0] 
+  vars:
+  #- ocp_cluster_admin: 
+  #- ocp_cluster_admin_password:
+  #- ocp_user_default_password:
+  pre_tasks:
+  - name: Authenticate with the api
+    #command: "oc login -u {{ ocp_cluster_admin}} -p {{ ocp_cluster_admin_password }} https://{{ groups['lb'][0] }}:8443 --insecure-skip-tls-verify=true" 
+    command: "oc login -u {{ ocp_cluster_admin}} -p {{ ocp_user_default_password }} localhost:8443 --insecure-skip-tls-verify=true"
+    register: loginout 
+    tags: always
+       
+  - name: Get Cluster Admins List
+    shell: "oc adm policy who-can admin cluster | tail -n+5"
+    tags: always 
+    register: clusteradminsout
+
+  tasks:
+  - name: Get current users of the system
+    shell: "oc get -o wide user --no-headers | awk {'print $1'}"
+    tags: always
+    register: usersout
+
+  - name: Print List of current Users Output 
+    debug: 
+      msg: "The list of current users is : {{ usersout }}"
+    tags: test
+
+  - name: Print Logging Namespace Variable Output 
+    debug: 
+      msg: "The logging is : {{ openshift_logging }}"
+    tags: test
+
+  - name: Print Install Logging variable Output 
+    debug: 
+      msg: "The Install Logging variable value is : {{ openshift_logging_install_logging }}"
+    tags: test
+
+  - name: Print Install Logging OPS variable Output 
+    debug: 
+      msg: "The Install Logging OPS variable value is : {{ openshift_logging_use_ops }}"
+    tags: test
+
+  - name: Login to Kibana for each user 
+    shell: "oc login -u {{ item }} -p {{ ocp_user_default_password }} https://{{ groups['lb'][0] }}:8443 --insecure-skip-tls-verify=true && curl -k -H \"Authorization: Bearer $(oc whoami -t)\" -H \"X-Proxy-Remote-User: $(oc whoami)\" -H \"X-Forwarded-For: 127.0.0.1\" https://{{ openshift_master_logging_public_url }}/project.my-project.*/_search?q=level:err | python -mjson.tool"
+    with_items:
+    - "{{ usersout.stdout_lines }}" 
+    when: (usersout is defined and usersout.stdout_lines | count > 0) 
+    tags: test
+    register: kibanaloginout
+    
+  - name: Authenticate with the api
+    shell: "oc login -u {{ ocp_cluster_admin}} -p {{ ocp_user_default_password }} localhost:8443 --insecure-skip-tls-verify=true && oc project {{ openshift_logging }}"
+    tags: always 
+    register: caloginout
+
+  - name: Retieve all current Logging ElasticSearch pods
+    shell: "oc get po -n {{ openshift_logging }} -l logging-infra=elasticsearch --no-headers | awk {'print $1'}"
+    when: openshift_logging_install_logging | bool or openshift_logging_use_ops | bool
+    tags: always
+    register: espodsout
+
+  - name: Print Current ElasticSearch Pods names Output 
+    debug: 
+      msg: "The current ElasticSearch pods are: {{ espodsout }}"
+    tags: test
+
+  - name: Print First ElasticSearch Pod name Output 
+    debug: 
+      msg: "The First ElasticSearch pod is: {{ espodsout.stdout_lines[0] }}"
+    tags: test
+
+  - name: Print Second ElasticSearch Pod name Output 
+    debug: 
+      msg: "The Second ElasticSearch pod is: {{ espodsout.stdout_lines[1] }}"
+    tags: test
+
+  - name: Assign Kibana Visualize to current users retrieve above 1 of 2
+    command: "oc exec {{ espodsout.stdout_lines[0] }} -- es_load_kibana_ui_objects {{ item }}"
+    when: (usersout is defined and usersout.stdout_lines | count > 0)
+      and (espodsout is defined and espodsout.stdout_lines | count > 0)
+    with_items: 
+    - "{{ usersout.stdout_lines }}"
+    tags: always
+    register: kibviz1out
+
+  - name: Assign Kibana Visualize to current users retrieve above 2 of 2
+    command: "oc exec {{ espodsout.stdout_lines[1] }} -- es_load_kibana_ui_objects {{ item }}"
+    when: (usersout is defined and usersout.stdout_lines | count > 0)
+     and (espodsout is defined and espodsout.stdout_lines | count > 1)
+     and item in clusteradminsout.stdout
+     and "ops" in espodsout.stdout_lines[1] 
+    with_items: 
+    - "{{ usersout.stdout_lines }}"
+    tags: always
+    register: kibviz2out
+
+  - name: Print Kibana Visualize Output 
+    debug: 
+      msg : " the Kibana Visualise output is {{ kibviz1out }}"
+    tags: test
+
+  - name: Print Kibana Visualize Output 
+    debug: 
+      msg : " the Kibana Visualise output is {{ kibviz2out }}"
+    tags: test
+
