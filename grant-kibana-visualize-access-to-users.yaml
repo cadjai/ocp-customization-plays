@@ -2,9 +2,9 @@
 - name: Generate Proxy certs 
   hosts: masters[0] 
   vars:
-  #- ocp_cluster_admin: 
-  #- ocp_cluster_admin_password:
-  #- ocp_user_default_password:
+  - ocp_cluster_admin: claude
+  - ocp_cluster_admin_password: Passw0rd1
+  - ocp_user_default_password: 'r3dh4t1!'
   pre_tasks:
   - name: Authenticate with the api
     #command: "oc login -u {{ ocp_cluster_admin}} -p {{ ocp_cluster_admin_password }} https://{{ groups['lb'][0] }}:8443 --insecure-skip-tls-verify=true" 
@@ -50,17 +50,35 @@
     when: (usersout is defined and usersout.stdout_lines | count > 0) 
     tags: test
     register: kibanaloginout
-    
-  - name: Authenticate with the api
-    shell: "oc login -u {{ ocp_cluster_admin}} -p {{ ocp_user_default_password }} localhost:8443 --insecure-skip-tls-verify=true && oc project {{ openshift_logging }}"
-    tags: always 
-    register: caloginout
 
+  - name: Print Kibana User Login Info Output 
+    debug: 
+      msg: "The Kiban Login info for the users is : {{ kibanaloginout }}"
+    tags: test
+    
   - name: Retieve all current Logging ElasticSearch pods
     shell: "oc get po -n {{ openshift_logging }} -l logging-infra=elasticsearch --no-headers | awk {'print $1'}"
     when: openshift_logging_install_logging | bool or openshift_logging_use_ops | bool
     tags: always
     register: espodsout
+
+ # - name: Post default index for each ElasticSearch Pod  
+ #   shell: "oc exec {{ item }} -- curl -XPOST 'logging-es/.kibana/_update_by_query?pretty&wait_for_completion&refresh' -H 'Content-Type: application/json' -d' { \"script\": { \"inline\": \"ctx._source.defaultIndex = null\", \"lang\": \"painless\" }, \"query\": { \"term\": { \"_type\": \"config\" } } }' "
+ #   with_items:
+ #   - "{{ espodsout.stdout_lines }}"
+ #   register: postdefaultindexout
+
+
+ # - name: Print Post Default Index Info Output 
+ #   debug: 
+ #     msg: "The Post Print Default Index info is : {{ postdefaultindexout }}"
+ #   tags: test
+
+
+  - name: Authenticate with the api
+    shell: "oc login -u {{ ocp_cluster_admin}} -p {{ ocp_user_default_password }} localhost:8443 --insecure-skip-tls-verify=true && oc project {{ openshift_logging }}"
+    tags: always 
+    register: caloginout
 
   - name: Print Current ElasticSearch Pods names Output 
     debug: 
