@@ -1,0 +1,69 @@
+---
+- name: Add Custom certificate to Master-Config.yaml
+  hosts: masters 
+  tasks:
+  - name: Update ServingInfo attribute with Custom Certificate
+    blockinfile:
+      path: /etc/origin/master/master-config.yaml
+      insertafter: "^  requestTimeoutSeconds"
+      state: present
+      marker: "# {mark} ANSIBLE MANAGED BLOCK Adding custom certs to servingInfo"
+      block: |2
+          namedCertificates:
+            - certFile: /etc/origin/master/named_certificates/{{ lb_custom_cert }}.pem
+              keyFile: /etc/origin/master/named_certificates/{{ lb_custom_cert }}.key
+              names:
+                - "{{ lb_fqdn }}"
+
+  - name: Remove HTPasswdIdentityProvider Config
+    blockinfile:
+      path: /etc/origin/master/master-config.yaml
+      insertafter: "  identityProviders:"
+      state: absent
+      marker: "# {mark} ANSIBLE MANAGED BLOCK Removing Htpasswd Identity Provider" 
+      block: |2
+        - name: 
+          challenge: true
+          login: true
+          mappingMethod: claim
+          provider:
+            apiVersion: v1
+            kind: HTPasswdPasswordIdentityProvider 
+            file: /etc/origin/master/htpasswd.openshift
+
+  - name: Add Request Header Provider Config
+    blockinfile:
+      path: /etc/origin/master/master-config.yaml
+      insertafter: "  identityProviders:"
+      state: present
+      marker: "# {mark} ANSIBLE MANAGED BLOCK Adding RequestHeader Provider" 
+      #block: |4
+      block: |2
+        - name: requestheader
+          challenge: true
+          login: true
+          mappingMethod: add
+          provider:
+            apiVersion: v1
+            kind: RequestHeaderIdentityProvider
+            challengeURL: "https://{{ lb_fqdn }}/challenging-proxy/oauth/authorize?${query}"
+            loginURL: "https://{{ lb_fqdn }}/login-proxy/oauth/authorize?${query}"
+            clientCA: /etc/origin/master/named_certificates/{{ lb_custom_cert_ca_chain }}.pem
+            headers:
+              - X-Remote-User
+
+  - name: Restart Openshift Controller Services
+    service:
+      name: "{{ item }}"
+      state: restarted
+    with_items:
+      - atomic-openshift-master-api
+      - atomic-openshift-master-controllers
+
+  - name: Check Status of Openshift Controller Services
+    service:
+      name: "{{ item }}"
+      state: restarted
+    with_items:
+      - atomic-openshift-master-api
+      - atomic-openshift-master-controllers
