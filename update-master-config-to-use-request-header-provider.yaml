@@ -15,21 +15,17 @@
               names:
                 - "{{ lb_fqdn }}"
 
-  - name: Remove HTPasswdIdentityProvider Config
-    blockinfile:
+  - name: Add Markers to mark HTPasswd Identity Provider 1 of 2 
+    lineinfile:
       path: /etc/origin/master/master-config.yaml
       insertafter: "  identityProviders:"
-      state: absent
-      marker: "# {mark} ANSIBLE MANAGED BLOCK Removing Htpasswd Identity Provider" 
-      block: |2
-        - name: 
-          challenge: true
-          login: true
-          mappingMethod: claim
-          provider:
-            apiVersion: v1
-            kind: HTPasswdPasswordIdentityProvider 
-            file: /etc/origin/master/htpasswd.openshift
+      line: "# BEGIN ANSIBLE MANAGED BLOCK Removing Htpasswd Identity Provider" 
+
+  - name: Add Markers to mark HTPasswd Identity Provider 2 of 2 
+    lineinfile:
+      path: /etc/origin/master/master-config.yaml
+      insertafter: "      file: /etc/origin/master/htpasswd.openshift"
+      line: "# END ANSIBLE MANAGED BLOCK Removing Htpasswd Identity Provider" 
 
   - name: Add Request Header Provider Config
     blockinfile:
@@ -37,7 +33,6 @@
       insertafter: "  identityProviders:"
       state: present
       marker: "# {mark} ANSIBLE MANAGED BLOCK Adding RequestHeader Provider" 
-      #block: |4
       block: |2
         - name: requestheader
           challenge: true
@@ -51,6 +46,7 @@
             clientCA: /etc/origin/master/named_certificates/{{ lb_custom_cert_ca_chain }}.pem
             headers:
               - X-Remote-User
+    register: requestheaderconfigout
 
   - name: Restart Openshift Controller Services
     service:
@@ -59,6 +55,8 @@
     with_items:
       - atomic-openshift-master-api
       - atomic-openshift-master-controllers
+    when: requestheaderconfigout.msg == "block inserted"
+    register: mastersvcrestartout
 
   - name: Check Status of Openshift Controller Services
     service:
@@ -67,3 +65,4 @@
     with_items:
       - atomic-openshift-master-api
       - atomic-openshift-master-controllers
+    when: mastersvcrestartout.rc == 0
