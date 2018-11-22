@@ -43,7 +43,9 @@
             kind: RequestHeaderIdentityProvider
             challengeURL: "https://{{ lb_fqdn }}/challenging-proxy/oauth/authorize?${query}"
             loginURL: "https://{{ lb_fqdn }}/login-proxy/oauth/authorize?${query}"
-            clientCA: /etc/origin/master/named_certificates/{{ lb_custom_cert_ca_chain }}.pem
+            clientCA: /etc/origin/master/proxyca.crt
+            clientCommonNames:
+            - "{{ authproxy_cn }}"
             headers:
               - X-Remote-User
     register: requestheaderconfigout
