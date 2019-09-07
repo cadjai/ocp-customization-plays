@@ -1,0 +1,30 @@
+---
+- name: Disable IPV6 on all hosts including support hosts (DNS, LB,...) 
+  hosts: nodes,lb,registry,dns 
+  become: yes
+  vars: 
+    - search_domain: ''
+  tasks:
+  - name: Set permanent Hostname for each host 
+    hostname:
+      name: "{{ item }}.{{ search_domain }}"
+    when:
+      - hostvars[item].ansible_domain is defined and hostvars[item].ansible_domain | length == 0
+      - hostvars[item].ansible_fqdn is defined and '.' not in hostvars[item].ansible_fqdn
+      - search_domain is defined and search_domain | length > 0
+    with_items:
+      - groups['all']
+    register: hostnamectl_set
+
+### This was copied from https://gist.github.com/rotgar/879800
+  - name: Update hosts file on all hosts
+    lineinfile:
+      dest: /etc/hosts
+      regexp: '.*{{ item }}$'
+      line: "{{ hostvars[item].ansible_default_ipv4.address }} {{ item }} {% if hostnamectl_set.changed %} {{ item }}.{{ search_domain }} {% endif %}"
+      state: present
+    when:
+      - hostvars[item].ansible_default_ipv4.address is defined
+      - search_domain is defined and search_domain | length > 0
+    with_items:
+      - groups['all']
