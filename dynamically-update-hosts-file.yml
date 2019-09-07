@@ -1,6 +1,7 @@
 ---
-- name: Disable IPV6 on all hosts including support hosts (DNS, LB,...) 
-  hosts: nodes,lb,registry,dns 
+- name: Set Hostnamectl and /etc/hosts on all hosts including support hosts (DNS, LB,...) 
+  #hosts: nodes,lb,registry,dns 
+  hosts: all 
   become: yes
   vars: 
     - search_domain: ''
@@ -8,12 +9,13 @@
   - name: Set permanent Hostname for each host 
     hostname:
       name: "{{ item }}.{{ search_domain }}"
+      #name: "{{ hostvars[item]['ansible_facts']['fqdn'] }}.{{ search_domain }}"
     when:
-      - hostvars[item].ansible_domain is defined and hostvars[item].ansible_domain | length == 0
-      - hostvars[item].ansible_fqdn is defined and '.' not in hostvars[item].ansible_fqdn
+      - hostvars[item]['ansible_facts']['ansible_domain'] is defined and hostvars[item]['ansible_facts']['ansible_domain'] | length == 0
+      - hostvars[item]['ansible_facts']['ansible_fqdn'] is defined and '.' not in hostvars[item]['ansible_facts']['ansible_fqdn']
       - search_domain is defined and search_domain | length > 0
     with_items:
-      - groups['all']
+      - "{{ groups['all'] }}"
     register: hostnamectl_set
 
 ### This was copied from https://gist.github.com/rotgar/879800
@@ -27,4 +29,4 @@
       - hostvars[item].ansible_default_ipv4.address is defined
       - search_domain is defined and search_domain | length > 0
     with_items:
-      - groups['all']
+      - "{{ groups['all'] }}"
