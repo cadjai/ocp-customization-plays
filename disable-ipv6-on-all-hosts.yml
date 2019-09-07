@@ -1,0 +1,7 @@
+---
+- name: Disable IPV6 on all hosts including support hosts (DNS, LB,...) 
+  hosts: nodes,lb,registry,dns 
+  become: yes
+  roles:
+  - disable-ipv6-on-all-hosts 
+
