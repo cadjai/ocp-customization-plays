@@ -1,0 +1,14 @@
+TYPE=Ethernet
+BOOTPROTO=none
+IPV6INIT=no
+IPV6_AUTOCONF=no
+IPV6_DEFROUTE=no
+NAME={{ ansible_default_ipv4.interface }}"
+ONBOOT=yes
+PEERDNS=no
+{% if desired_mtu is defined and desired_mtu | length > 0 %}
+MTU={{ desired_mtu }}
+{% endif %}
+{% if search_domain is defined and search_domain | length > 0 %}
+DOMAIN={{ search_domain }}
+{% endif %}

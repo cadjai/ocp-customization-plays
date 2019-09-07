@@ -1,0 +1,4 @@
+---
+# defaults file for roles/static-ip
+search_domain: ''
+desired_mtu: 1446

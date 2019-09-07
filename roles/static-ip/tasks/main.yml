@@ -1,0 +1,25 @@
+---
+# tasks file for roles/static-ip
+- name: Copy static ifcfg file to the location
+  template:
+    src: ifcfg.j2
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}"
+    backup: yes
+  register: static_file_copied
+
+- name: Force Networkmanager reload of the /etc/resolv.conf 1 of 2
+  shell: nmcli connection reload
+  when: 
+    - static_file_copied is defined
+    - static_file_copied.results is defined 
+    - static_file_copied.results.path is defined 
+  register: connection_reloaded
+
+- name: Force Networkmanager reload of the /etc/resolv.conf 2 of 2
+  shell: nmcli connection up {{ ansible_default_ipv4.interface }}
+  when: 
+    - static_file_copied is defined
+    - static_file_copied.results is defined 
+    - static_file_copied.results.path is defined 
+    - connection_reloaded.rc == 0
+  register: connection_refreshed

@@ -1,0 +1,7 @@
+---
+- name: Configure static ip on all hosts including support hosts (DNS, LB,...) 
+  hosts: nodes,lb,registry,dns 
+  become: yes
+  roles:
+  - static-ip 
+
