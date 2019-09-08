@@ -1,0 +1,90 @@
+---
+# tasks file for roles/configure-ocp-for-secured-external-registry
+- name: Configure Hosts to communicate with External Registry
+  block:
+    - name: Download CA cert or self signed cert
+      get_url:
+        url: "{{ cert_url }}"
+        dest: /etc/pki/ca-trust/source/anchors/registry-ca.crt
+        mode: 0644
+        group: root
+        owner: root
+      when:
+        - download_ca | bool
+      register: ca_downloaded
+ 
+    - name: Copy the Ca cert or registry self signed cert from bastion to the host
+      copy:
+        src: "{{ external_registry_ca }}
+        dest: /etc/pki/ca-trust/source/anchors/registry-ca.crt
+        mode: 0644
+        group: root
+        owner: root
+      when:
+        - external_registry_ca is defined and external_registry_ca | length > 0 
+        - download_ca | bool == false
+      register: ca_copied
+
+    - name: Update Ca DB store to trust downloaded CA from above
+      shell: update-ca-trust
+      when: 
+        - ca_downloaded.dest.returned == 'success' or (ca_copied is defined and ca_copied.returned == 'success')
+
+    - name: Get Subject CN of Ca from certificate to verify that it is currently trusted by the host
+      shell: openssl x509 -subject -noout -in /etc/pki/ca-trust/source/anchors/registry-ca.crt | cut -d, -f7 | cut -d= -f2 | awk '{$1=$1};1'
+      register: registry_ca_subject
+
+    - name: Get Issuer CN of Ca from certificate to verify that it is currently trusted by the host
+      shell: openssl x509 -issuer -noout -in /etc/pki/ca-trust/source/anchors/registry-ca.crt | cut -d, -f7 | cut -d= -f2 | awk '{$1=$1};1'
+      register: registry_ca_issuer
+
+    - name: verify certificate above was added to CA Trust on Host 
+      shell: trust list | egrep -i 'registry_ca_issuer.stdout|registry_ca_subject.stdout'
+      when:
+        - (registry_ca_subject is defined and registry_ca_subject.stdout | length > 0) or (registry_ca_issuer is defined and registry_ca_issuer.stdout | length > 0)
+      register: trust_verified
+
+- name: Configure docker on hosts to communicate with External Registry
+  block:
+    - name: Set CA Directory Path Fact
+      set_fact:
+        ca_sub_dir: {{ external_registry_fqdn + ':' + external_registry_port | default(external_registry_port) }}
+      when:
+        - external_registry_port is defined
+        - external_registry_port | length > 0
+
+    - name: Create Directory for the External Registry FQDN:Port 
+      file:
+        path: /etc/docker/cert.d/{{ ca_sub_dir }}
+        state: directory
+        mode: 0777
+        group: root
+        owner: root
+      register: docker_ca_dir_created
+
+    - name: Set Fact for certificate to copy
+      set_fact:
+        #ca_file: {{ '/etc/pki/tls/certs/ca-bundle.crt' | default('/etc/pki/ca-trust/source/anchors/registry-ca.crt')}}
+        ca_file: {{ '/etc/pki/tls/certs/ca-bundle.crt' if (trust_verified is defined and trust_verified.rc == 0) else '/etc/pki/ca-trust/source/anchors/registry-ca.crt' }}
+      #when:
+      #  - trust_verified is defined
+      #  - trust_verified.rc == 0
+
+    - name: Copy certificate to the directory created above 
+      copy:
+        remote_src: yes
+        src: {{ ca_file }}
+        dest: {{ docker_ca_dir_created.path }}
+        mode: 0777
+        group: root
+        owner: root
+      when:
+        - docker_ca_dir_created is defined and docker_ca_dir_created.path is defined
+      register: cert_copied_to_docker
+
+    - name: Restart the docker daemon 
+      systemd:
+        name: docker
+        state: restarted
+        daemon_reload: yes
+      register: docker_restart

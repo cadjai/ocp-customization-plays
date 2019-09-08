@@ -1,0 +1,8 @@
+---
+# defaults file for roles/configure-ocp-for-secured-external-registry
+download_ca: false
+external_registry_fqdn: ''
+external_registry_port: ''
+external_registry_ca: ''
+configure_internal_registry: false
+

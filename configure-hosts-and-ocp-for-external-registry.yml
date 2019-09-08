@@ -1,0 +1,15 @@
+---
+- name: Configure OCP Hosts to communicate with the secured external registry
+  hosts: nodes
+  become: yes
+  roles:
+  - configure-ocp-for-secured-external-registry
+
+- name: Configure Internal Registry to communicate with secured external registry 
+  hosts: masters[0] 
+  become: yes
+  tasks:
+  - name: Import OCP Internal Registry Config tasks 
+    import_tasks: config-internal-registry-to-trust-external-registry.yml
+    when:
+      - configure_internal_registry is defined and configure_internal_registry | bool

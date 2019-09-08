@@ -1,0 +1,45 @@
+- name: Configure internal registry to communicate with External Registry
+  block:
+  when: 
+    - configure_internal_registry is defined
+    - configure_internal_registry | bool
+
+    - name: Determine ca file to use for CM 1 of 2
+      shell: openssl x509 -subject -noout -in /etc/pki/ca-trust/source/anchors/registry-ca.crt | cut -d, -f7 | cut -d= -f2 | awk '{$1=$1};1'
+      register: registry_ca_subject
+
+    - name: Get Issuer CN of Ca from certificate to verify that it is currently trusted by the host
+      shell: openssl x509 -issuer -noout -in /etc/pki/ca-trust/source/anchors/registry-ca.crt | cut -d, -f7 | cut -d= -f2 | awk '{$1=$1};1'
+      register: registry_ca_issuer
+
+    - name: verify certificate above was added to CA Trust on Host
+      shell: trust list | egrep -i 'registry_ca_issuer.stdout|registry_ca_subject.stdout'
+      when:
+        - (registry_ca_subject is defined and registry_ca_subject.stdout | length > 0) or (registry_ca_issuer is defined and registry_ca_issuer.stdout | length > 0)
+      register: trust_verified
+     
+    - name: Set File to use as fact
+      set_fact:
+        external_registry_ca: "{% if trust_verified is defined and trust_verified.rc == 0 %} /etc/pki/tls/certs/ca-bundle.crt {% else %} /etc/pki/ca-trust/source/anchors/registry-ca.crt {% endif %}"
+      when:
+        - registry_ca_subject  is defined and registry_ca_subject.rc ==0 and registry_ca_subject.stdout | length > 0
+        - registry_ca_issuer is defined and registry_ca_issuer.rc ==0 and registry_ca_issuer.stdout | length > 0
+        - trust_verified is defined and trust_verified.rc ==0
+
+    - name: Create CM to contain the CA defined above
+      shell: oc create ConfigMap external-registry-ca --from-file=tls-ca-bundle.pem={{ external_registry_ca }} -n default
+      when: 
+        - external_registry_ca is defined and external_registry_ca | length > 0
+      register: cm_created
+
+    - name: Set Volume for the CM create above
+      shell: oc set volume dc docker-registry -n default --add --name=ca-bundle -t configmap --configmap-name=external-registry-ca -m /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem --sub-path=tls-ca-bundle.pem --overwrite
+      when:
+        - cm_created is defined and cm_created.rc == 0
+      register: volume_mounted
+
+    - name: Rollout latest version of the internal registry as there were times this didn't complete rollout after volume mount above
+      shell: oc rollout lastest dc docker-registry -n default
+      when:
+        - volume_mounted is defined and volume_mounted.rc == 0
+      register: dc_rollout
