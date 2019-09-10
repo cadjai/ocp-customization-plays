@@ -1,0 +1,7 @@
+---
+- name: Install and Configure Standalone docker registry including securing it
+  hosts: registry
+  become: yes
+  roles:
+  - install-and-configure-external-docker-registry 
+
