@@ -3,7 +3,7 @@
 secure_external_registry: false
 external_registry_fqdn: ''
 external_registry_port: '5000'
-external_registry_ca: ''
+external_registry_cert: ''
 external_registry_key: ''
 external_registry_cert_dir: '/etc/docker-distribution/certs'
 external_registry_secret: 'testsecret'

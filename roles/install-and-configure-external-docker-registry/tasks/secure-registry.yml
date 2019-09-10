@@ -11,7 +11,7 @@
 - name: Copy certifcate to directory created above
   copy:
     remote_src: yes
-    src: "{{ external_registry_ca }}"
+    src: "{{ external_registry_cert }}"
     dest: "{{ external_registry_cert_dir }}"
   when: 
-    - external_registry_ca is defined and external_registry_ca | length > 0
+    - external_registry_cert is defined and external_registry_cert | length > 0

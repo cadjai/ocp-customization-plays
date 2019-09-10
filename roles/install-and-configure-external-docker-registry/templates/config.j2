@@ -14,7 +14,7 @@ http:
     addr: :"{{ external_registry_port }}
 {% if secure_external_registry | bool %}
     tls:
-      certificate: "{{ external_registry_dir }}/{{ external_registry_ca | basename}}"
+      certificate: "{{ external_registry_dir }}/{{ external_registry_cert | basename}}"
       key: "{{ external_registry_dir }}/{{ external_registry_key | basename }}"
     host: "https://{{ external_registry_fqdn }}:{{ external_registry_port }}"
 {% endif %}
