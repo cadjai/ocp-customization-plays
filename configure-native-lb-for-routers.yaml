@@ -1,0 +1,8 @@
+- name: Use Native LB to laod balance router traffic
+  hosts: lb
+  become: yes
+  vars:
+    - use_native_lb_for_router: ''
+    - use_same_port_for_router_and_lb: false
+  roles:
+  - config-lb-for-router

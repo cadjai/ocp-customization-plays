@@ -1,0 +1,14 @@
+---
+# tasks file for config-lb-for-router
+- name: Copy HAProxy config to the Load balancer
+  template:
+    src: haproxy.config.j2
+    dest: /etc/haproxy/haproxy.cfg
+    backup: yes
+    group: root
+    owner: root 
+
+- name: Restart the HAProxy service
+  service:
+    state: restarted
+    name: haproxy
