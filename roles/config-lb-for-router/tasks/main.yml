@@ -1,5 +1,16 @@
 ---
 # tasks file for config-lb-for-router
+- name: Check that the LB service is present on host
+  service:
+    name: haproxy
+    enabled: yes
+  register: haproxy_exist
+
+- name: Fail the tasks if service not present
+  fail:
+    msg: These tasks can only be run when haproxy is present on the host
+  when: haproxy_exist.rc > 0
+    
 - name: Copy HAProxy config to the Load balancer
   template:
     src: haproxy.config.j2
