@@ -9,7 +9,7 @@
 - name: Fail the tasks if service not present
   fail:
     msg: These tasks can only be run when haproxy is present on the host
-  when: haproxy_exist.rc > 0
+  when: not haproxy_exist.enabled | bool
     
 - name: Copy HAProxy config to the Load balancer
   template:

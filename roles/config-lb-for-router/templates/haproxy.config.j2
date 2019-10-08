@@ -117,7 +117,6 @@ backend atomic-openshift-api
 {% endfor %}
 
 ### Router Config
-{% for node in groups['nodes'] %}
 frontend router-http
     bind *:80
     default_backend router-backend-http
@@ -133,6 +132,7 @@ backend router-backend-http
     mode http
     option httpclose
     option forwardfor
+{% for node in groups['nodes'] %}
 {% if hostvars[node].openshift_node_group_name == 'node-config-infra' %}
     server router{{ loop.index0 }} {{ node }}:80 check
 {% endif %}
@@ -141,10 +141,12 @@ backend router-backend-http
 backend atomic-openshift-apps-http
     balance source
     mode tcp
+{% for node in groups['nodes'] %}
 {% if hostvars[node].openshift_node_group_name == 'node-config-infra' %}
     server router{{ loop.index0 }} {{ node }}:443 check
 {% endif %}
 {% endfor %}
 
+{% endif %}
 {% endif %}
 {% endif %}
