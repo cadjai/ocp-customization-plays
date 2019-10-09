@@ -58,7 +58,7 @@ backend atomic-openshift-api
 {% else %}
 {% if use_native_lb_for_router | bool %}
 {% if use_same_port_for_router_and_lb is defined and use_same_port_for_router_and_lb | bool %}
-### Router Config
+### OpenShift API Config + Router Config
 frontend  atomic-openshift-http
     bind  *:80
     mode tcp
