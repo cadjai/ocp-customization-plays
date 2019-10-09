@@ -86,18 +86,22 @@ backend atomic-openshift-api
 backend atomic-openshift-apps-http
     balance source
     mode tcp
+{% set myindex = 0 %}
 {% for node in groups['nodes'] %}
 {% if hostvars[node].openshift_node_group_name == 'node-config-infra' %}
-    server router{{ loop.index0 }} {{ node }}:80 check
+    server router{{ myindex }} {{ node }}:80 check
+{% set myindex = myindex + 1 %}
 {% endif %}
 {% endfor %}
 
 backend atomic-openshift-apps-https
     balance source
     mode tcp
+{% set myindex = 0 %}
 {% for node in groups['nodes'] %}
 {% if hostvars[node].openshift_node_group_name == 'node-config-infra' %}
-    server router{{ loop.index0 }} {{ node }}:443 check
+    server router{{ myindex }} {{ node }}:80 check
+{% set myindex = myindex + 1 %}
 {% endif %}
 {% endfor %}
 
@@ -132,18 +136,22 @@ backend router-backend-http
     mode http
     option httpclose
     option forwardfor
+{% set myindex = 0 %}
 {% for node in groups['nodes'] %}
 {% if hostvars[node].openshift_node_group_name == 'node-config-infra' %}
-    server router{{ loop.index0 }} {{ node }}:80 check
+    server router{{ myindex }} {{ node }}:80 check
+{% set myindex = myindex + 1 %}
 {% endif %}
 {% endfor %}
 
 backend atomic-openshift-apps-http
     balance source
     mode tcp
+{% set myindex = 0 %}
 {% for node in groups['nodes'] %}
 {% if hostvars[node].openshift_node_group_name == 'node-config-infra' %}
-    server router{{ loop.index0 }} {{ node }}:443 check
+    server router{{ myindex }} {{ node }}:80 check
+{% set myindex = myindex + 1 %}
 {% endif %}
 {% endfor %}
 
