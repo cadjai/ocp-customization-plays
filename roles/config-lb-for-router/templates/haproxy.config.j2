@@ -39,8 +39,8 @@ mode http
     stats enable
     stats uri /
 
-### OpenShift API Config
 {% if use_native_lb_for_router is undefined or not use_native_lb_for_router | bool %}
+### OpenShift API Config
 
 frontend  atomic-openshift-api
     bind *:{{ openshift_master_api_port }}
