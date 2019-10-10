@@ -52,7 +52,7 @@ backend atomic-openshift-api
     balance source
     mode tcp
 {% for host in groups['masters'] %}
-    server	master{{ loop.index0 }}	{{ host }}:{{ openshift_master_api_port }} check
+    server	master{{ loop.index0 }}	{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}:{{ openshift_master_api_port }} check
 {% endfor %}
 
 {% else %}
@@ -80,7 +80,7 @@ backend atomic-openshift-api
     balance source
     mode tcp
 {% for host in groups['masters'] %}
-    server	master{{ loop.index0 }}	{{ host }}:{{ openshift_master_api_port }} check
+    server	master{{ loop.index0 }}	{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}:{{ openshift_master_api_port }} check
 {% endfor %}
 
 backend atomic-openshift-apps-http
@@ -89,7 +89,7 @@ backend atomic-openshift-apps-http
 {% set myindex = 0 %}
 {% for node in groups['nodes'] %}
 {% if hostvars[node].openshift_node_group_name == 'node-config-infra' %}
-    server router{{ myindex }} {{ node }}:80 check
+    server router{{ myindex }} {{ hostvars[node]['ansible_facts']['default_ipv4']['address'] }}:80 check
 {% set myindex = myindex + 1 %}
 {% endif %}
 {% endfor %}
@@ -100,7 +100,7 @@ backend atomic-openshift-apps-https
 {% set myindex = 0 %}
 {% for node in groups['nodes'] %}
 {% if hostvars[node].openshift_node_group_name == 'node-config-infra' %}
-    server router{{ myindex }} {{ node }}:80 check
+    server router{{ myindex }} {{ hostvars[node]['ansible_facts']['default_ipv4']['address'] }}:80 check
 {% set myindex = myindex + 1 %}
 {% endif %}
 {% endfor %}
@@ -117,7 +117,7 @@ backend atomic-openshift-api
     balance source
     mode tcp
 {% for host in groups['masters'] %}
-    server	master{{ loop.index0 }}	{{ host }}:{{ openshift_master_api_port }} check
+    server	master{{ loop.index0 }}	{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }}:{{ openshift_master_api_port }} check
 {% endfor %}
 
 ### Router Config
@@ -139,7 +139,7 @@ backend router-backend-http
 {% set myindex = 0 %}
 {% for node in groups['nodes'] %}
 {% if hostvars[node].openshift_node_group_name == 'node-config-infra' %}
-    server router{{ myindex }} {{ node }}:80 check
+    server router{{ myindex }} {{ hostvars[node]['ansible_facts']['default_ipv4']['address'] }}:80 check
 {% set myindex = myindex + 1 %}
 {% endif %}
 {% endfor %}
@@ -150,7 +150,7 @@ backend atomic-openshift-apps-http
 {% set myindex = 0 %}
 {% for node in groups['nodes'] %}
 {% if hostvars[node].openshift_node_group_name == 'node-config-infra' %}
-    server router{{ myindex }} {{ node }}:80 check
+    server router{{ myindex }} {{ hostvars[node]['ansible_facts']['default_ipv4']['address'] }}:80 check
 {% set myindex = myindex + 1 %}
 {% endif %}
 {% endfor %}
