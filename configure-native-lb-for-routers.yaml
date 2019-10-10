@@ -1,3 +1,9 @@
+---
+- name: Collect Facts from all hosts
+  hosts: all
+  become: yes
+  tasks: []
+
 - name: Use Native LB to laod balance router traffic
   hosts: lb
   become: yes
