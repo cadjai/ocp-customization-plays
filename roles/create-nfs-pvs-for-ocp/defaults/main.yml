@@ -9,5 +9,5 @@ pv_sizes:
   - 20Gi
 pv_vol_path: /srv/nfs/user-vols
 pv_vol_prefix: pv
-nfs_export_file: openshift-uservols.exports
-nfs_server_fqdn: "support1.$GUID.internal"
+nfs_export_file: ocp-uservols.exports
+nfs_server_fqdn: ""
