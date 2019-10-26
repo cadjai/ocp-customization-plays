@@ -1,0 +1,5 @@
+{% for v in range(pv_number) %}
+
+{{ pv_vol_path }}/{{ pv_vol_prefix }}{{ v }} *(rw,root_squash)
+
+{% endfor %}

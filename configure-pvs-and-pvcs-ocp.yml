@@ -1,0 +1,53 @@
+---
+- name: Create PVs physical volumes and configure NFS Server
+  hosts: nfs
+  become: yes
+  vars:
+  roles:
+  - create-nfs-pvs-for-ocp
+
+- name: Create pvs to be used on OCP
+  hosts: localhost
+  remote_user: ec2-user
+  become: yes
+  become_method: sudo
+  vars:
+    - ocp_cluster_admin: claude
+    - ocp_cluster_admin_password: 'r3dh4t1!'
+    - ocp_cluster_console_url: https://loadbalancer.e3fe.example.opentlc.com
+    - ocp_cluster_console_port: 8443
+    - openshift_cli: "oc"
+  pre_tasks:
+  - name: Authenticate with the api
+    command: "oc login -u {{ ocp_cluster_admin}} -p {{ ocp_cluster_admin_password }} {{ ocp_cluster_console_url }}:{{ ocp_cluster_console_port }} --insecure-skip-tls-verify=true"
+    register: loginout
+  - name: Retrieve login context
+    command: oc config current-context
+    register: current_context
+  - name: Set Config Context
+    command: oc config use-context {{ current_context.stdout }} 
+    when:
+      - current_context is defined and current_context.stdout is defined
+  - name: Import variable file from role 
+    include_vars: 
+      file: ./roles/create-nfs-pvs-for-ocp/defaults/main.yml
+
+  tasks:
+  - name: Copy RWX PVs yaml file into place
+    template:
+      src: ./roles/create-nfs-pvs-for-ocp/templates/rwx-pvs.j2
+      dest: /tmp/rwx-pvs.yml
+
+  - name: Copy RWO PVs yaml file into place
+    template:
+      src: ./roles/create-nfs-pvs-for-ocp/templates/rwo-pvs.j2
+      dest: /tmp/rwo-pvs.yml
+
+  - name: Create RWO PVs 
+    command: "{{ openshift_cli }} create -f /tmp/rwo-pvs.yml "
+    register: rwo_pvs_created
+
+  - name: Create RWX PVs 
+    command: "{{ openshift_cli }} create -f /tmp/rwx-pvs.yml "
+    register: rwx_pvs_created
+

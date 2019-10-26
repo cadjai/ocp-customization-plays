@@ -1,0 +1,25 @@
+---
+# tasks file for roles/create-nfs-pvs-for-ocp
+- name: Create Directories for PVs
+  file:
+    path: "{{ pv_vol_path }}/{{ pv_vol_prefix }}{{ item }}"
+    state: directory
+    owner: nfsnobody
+    group: nfsnobody
+    mode: '1777'
+  with_sequence: start=1 end={{ pv_number }}
+  register: pv_vol_created
+
+- name: Add physical volume to nfs export file
+  template:
+    src: nfs-export.j2
+    dest: "/etc/exports.d/{{ nfs_export_file }}"
+    owner: root
+    group: root
+  register: export_file_copied
+    
+- name: Restart the nfs-server service
+  service:
+    name: nfs-server
+    state: restarted
+  register: nfs_server_restarted

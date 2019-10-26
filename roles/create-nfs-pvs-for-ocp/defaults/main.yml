@@ -1,0 +1,13 @@
+---
+# defaults file for roles/create-nfs-pvs-for-ocp
+pv_number: 50
+pv_sizes:
+  - 1Gi
+  - 2Gi
+  - 4Gi
+  - 10Gi
+  - 20Gi
+pv_vol_path: /srv/nfs/user-vols
+pv_vol_prefix: pv
+nfs_export_file: openshift-uservols.exports
+nfs_server_fqdn: "support1.$GUID.internal"
