@@ -1,0 +1,14 @@
+---
+#- hosts: nodes 
+- hosts: node*:!masters:!infra* 
+  #remote_user: root 
+  remote_user: ec2-user 
+  become: yes
+  become_method: sudo
+  roles:
+    - role: configure-hostpath 
+      vars:
+        use_hostpath: true
+        #hostpath_vol: "/"
+        hostpath_mount_path: "/sonarqube-data/"
+      tags: hostpath 

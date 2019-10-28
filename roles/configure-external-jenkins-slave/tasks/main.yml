@@ -1,0 +1,79 @@
+---
+# tasks file for roles/configure-external-jenkins-slave
+- name: Lookup jenkins routes in the cluster
+  shell: "oc get routes --all-namespaces | egrep -i jenkins | awk '{print $3}'"
+  register: jenkins_routes
+  when:
+    - jenkins_route is not defined or (jenkins_route is defined and jenkins_route | length <= 1)
+
+- name: Lookup jenkins route names in the cluster
+  shell: "oc get routes --all-namespaces | egrep -i jenkins | awk '{print $2}'"
+  register: jenkins_route_names
+  when:
+    - jenkins_route is not defined or (jenkins_route is defined and jenkins_route | length <= 1)
+
+- name: Lookup jenkins namespace in the cluster
+  shell: "oc get routes --all-namespaces | egrep -i jenkins | awk '{print $1}'"
+  register: jenkins_route_ns
+  when:
+    - jenkins_route is not defined or (jenkins_route is defined and jenkins_route | length <= 1)
+
+- name: Print Jenkins Route
+  debug:
+    var: jenkins_route
+
+- name: Print Jenkins Routes
+  debug:
+    var: jenkins_routes
+
+- name: Set Jenkins URL Fact
+  set_fact:
+    jenkins_url: "https://{{ jenkins_route | default(jenkins_routes.stdout_lines[0], true) }}"
+  when:
+    - jenkins_route is defined or ( jenkins_routes is defined and jenkins_routes.stdout_lines is defined and jenkins_routes.stdout_lines[0] is defined)
+  
+- name: Lookup Jenkins service account
+  shell: "oc get sa --all-namespaces | egrep -i jenkins | awk '{print $2}'"
+  register: jenkins_sas  
+
+- name: Get token for the Serivce Account retrieved above
+  shell: oc serviceaccounts get-token {{ jenkins_sas.stdout_lines[0] }} -n {{ jenkins_route_ns.stdout_lines[0] }}
+  when:
+    - jenkins_sas is defined and jenkins_sas.stdout_lines is defined and jenkins_sas.stdout_lines[0] is defined 
+  register: jenkins_sa_token
+
+#- name: Set Json Object for the 
+#  set_fact:
+#    jenkins_json_object: "{ 'name':+{{ jenkins_node_name }},+'nodeDescription':+'Linux+slave',+'numExecutors':+'5',+'remoteFS':+'/home/jenkins/agent',+'labelString':+'SLAVE-DOCKER+linux',+'mode':+'EXCLUSIVE',+'':+['hudson.slaves.JNLPLauncher',+'hudson.slaves.RetentionStrategy\$Always'],+'launcher':+{'stapler-class':+'hudson.slaves.JNLPLauncher',+'\$class':+'hudson.slaves.JNLPLauncher',+'workDirSettings':+{'disabled':+true,+'workDirPath':+'',+'internalDir':+'remoting',+'failIfWorkDirIsMissing':+false},+'tunnel':+'',+'vmargs':+'-Xmx1024m'},+'retentionStrategy':+{'stapler-class':+'hudson.slaves.RetentionStrategy\$Always',+'\$class':+'hudson.slaves.RetentionStrategy\$Always'},+'nodeProperties':+{'stapler-class-bag':+'true',+'hudson-slaves-EnvironmentVariablesNodeProperty':+{'env':+[{'key':+'JAVA_HOME',+'value':+'/docker-java-home'},+{'key':+'JENKINS_HOME',+'value':+'/home/jenkins'}]},+'hudson-tools-ToolLocationNodeProperty':+{'locations':+[{'key':+'hudson.plugins.git.GitTool\$DescriptorImpl@Default',+'home':+'/usr/bin/git'},+{'key':+'hudson.model.JDK\$DescriptorImpl@JAVA-8',+'home':+'/usr/bin/java'},+{'key':+'hudson.tasks.Maven\$MavenInstallation\$DescriptorImpl@MAVEN-3.5.2',+'home':+'/usr/bin/mvn'}]}}}" 
+
+- name: Print Jenkins SA Account name
+  debug:
+    var: jenkins_sas
+
+- name: Print Jenkins SA Token 
+  debug:
+    var: jenkins_sa_token
+
+- name: Post the Jenkins slave to the jenkins server
+  uri:
+    url: "{{ jenkins_url }}/computer/createItem?name={{ jenkins_node_name }}&type=hudson.slaves.DumbSlave"
+    #url: "{{ jenkins_url }}/computer/doCreateItem?name={{ jenkins_node_name }}&type=hudson.slaves.DumbSlave"
+    #url: "{{ jenkins_url }}/computer/new?name={{ jenkins_node_name }}&type=hudson.slaves.Slave"
+    url_username: "{{ jenkins_sas.stdout_lines[0] }}"
+    url_password: "{{ jenkins_sa_token.stdout_lines[0] }}"
+    method: POST
+    return_content: yes
+    HEADER_Content-Type: "application/json"
+    body: "{{ lookup('template', create-jenkins-slave.j2) | to_json }}"
+    body_format: json
+    #status_code: 201
+  register: slave_created
+
+- name: Pull Agent library from the jenkins server
+  uri:
+    url: "{{ jenkins_url }}/computer/{{ jenkins_node_name }}/slave-agent.jnlp"
+    url_username: "{{ jenkins_sas.stdout_lines[0] }}"
+    url_password: "{{ jenkins_sa_token.stdout_lines[0] }}"
+    method: GET
+    return_content: yes
+    dest: "/tmp/"

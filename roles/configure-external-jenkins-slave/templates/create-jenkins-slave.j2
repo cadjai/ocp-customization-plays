@@ -1,0 +1,61 @@
+{ 
+  'name':{{ jenkins_node_name }},
+  'nodeDescription':'{{ jenkins_node_name }} Slave',
+  'description':'{{ jenkins_node_name }} Slave',
+  'displayNmae':'{{ jenkins_node_name }} Slave',
+  'numExecutors':'5',
+  'remoteFS':'/home/jenkins/agent',
+  #'labelString':'{{ jenkins_node_name }}-Slave,{{ jenkins_node_name }}, slave, docker, java',
+  'assignedLabels':'[\{name: {{ jenkins_node_name }}-Slave\},\{name: {{ jenkins_node_name }}\}, \{name: slave\}, \{name: docker\}, \{name: java'\}]
+  'mode':'EXCLUSIVE',
+  'usage': 'Utilize this node as much as possible',
+  'launchMethod': 'Launch slave agents on Unix machines via SSH',
+  #'': ['hudson.slaves.JNLPLauncher','hudson.slaves.RetentionStrategy\$Always'],
+  'launcher': {
+     'stapler-class':'hudson.slaves.JNLPLauncher',
+     '\$class':'hudson.slaves.JNLPLauncher',
+     'workDirSettings': {
+        'disabled':true,
+        'workDirPath':'',
+        'internalDir':'remoting',
+        'failIfWorkDirIsMissing':false
+                       },
+     'tunnel':'',
+     'vmargs':'-Xmx1024m'
+              },
+     'retentionStrategy': {
+        'stapler-class':'hudson.slaves.RetentionStrategy\$Always',
+        '\$class':'hudson.slaves.RetentionStrategy\$Always'
+                          },
+     'nodeProperties': {
+        'stapler-class-bag':'true',
+        'hudson-slaves-EnvironmentVariablesNodeProperty': {
+           'env':[
+                  {
+                    'key':'JAVA_HOME',
+                    'value':'/docker-java-home'
+                  },
+                  {
+                    'key':'JENKINS_HOME',
+                    'value':'/home/jenkins'
+                  }
+                 ]
+                                                          },
+        'hudson-tools-ToolLocationNodeProperty': {
+           'locations': [
+                          {
+                             'key':'hudson.plugins.git.GitTool\$DescriptorImpl@Default',
+                             'home':'/usr/bin/git'
+                          },
+                          {
+                             'key':'hudson.model.JDK\$DescriptorImpl@JAVA-8',
+                             'home':'/usr/bin/java'
+                          },
+                          {
+                             'key':'hudson.tasks.Maven\$MavenInstallation\$DescriptorImpl@MAVEN-3.5.2',
+                             'home':'/usr/bin/mvn'
+                          }
+                        ]
+                                                 }
+                   }
+}
