@@ -1,0 +1,41 @@
+---
+# tasks file for configure-hostpath
+- name: Ensure the Persistence is to use Host Path
+  assert:
+    that:
+      - use_hostpath is defined and use_hostpath | bool
+      - hostpath_mount_path is defined and hostpath_mount_path | length > 0
+
+- name: Set SEBool
+  seboolean:
+    name: "{{ item }}"
+    state: yes
+    persistent: yes
+  with_items:
+    - "{{ hostpath_sebools }}"
+  register: sebool_set
+
+- name: Ensure the Mount Path exists
+  file:
+     path: "{{ hostpath_mount_path }}"
+     state: directory
+     mode: '0755'
+     owner: 1000
+     group: 1000
+
+- name: Make sure the necessary required packages are installed on host
+  yum:
+    name: "{{ selinux_py_pkgs }}"
+    state: present
+
+- name: Set SELinux context on the Mount Path
+  sefcontext:
+    target: "{{ hostpath_mount_path }}(/.*)?"
+    setype: svirt_sandbox_file_t
+    state: present
+  register: fcontext_set
+
+- name: Apply FContext set above
+  command: restorecon -irv {{ hostpath_mount_path }}
+  register: restorecon_applied
+

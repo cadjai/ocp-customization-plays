@@ -1,0 +1,11 @@
+---
+# defaults file for configure-hostpath
+hostpath_sebools:
+  - virt_sandbox_use_mknod
+  - virt_sandbox_use_netlink
+  - virt_sandbox_use_sys_admin
+  - unprivuser_use_svirt
+selinux_py_pkgs:
+  - libselinux-python
+  - policycoreutils-python
+  - libsemanage-python
