@@ -1,0 +1,17 @@
+[masters]
+localhost ansible_connection=local
+
+[nodes]
+localhost ansible_connection=local
+
+[lb]
+localhost ansible_connection=local
+
+[registry]
+localhost ansible_connection=local
+
+[dns]
+localhost ansible_connection=local
+
+[nfs]
+localhost ansible_connection=local
