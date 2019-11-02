@@ -1,0 +1,77 @@
+---
+# tasks file for roles/create-nfs-pvobjects-for-ocp
+- name: Check that key values are set
+  fail:
+    msg: "The Total PV Numner and type are required"
+  when:
+    - pv_number is not defined or (pv_number is defined and pv_number | int < 1)
+    - pv_sizes is not defined or ( pv_sizes is defined and pv_sizes | int < 1)
+    - pv_type is not defined or (pv_type is defined and not in ['all', 'rwx', 'rwo'])
+    - nfs_server_fqdn is not defined or (nfs_server_fqdn is defined and nfs_server_fqdn != '')
+
+- name: Set Fact for the various PV Types based on variables set above 1 of 5
+  set_fact:
+    rwo_pv_number: "{{ pv_number // 2 }}"
+    rwx_pv_number: "{{ pv_number // 2 }}"
+  when:
+    - rwo_pv_number is not defined or rwo_pv_number | int < 1
+    - rwx_pv_number is not defined or rwx_pv_number | int < 1
+    - pv_type is not defined or (pv_type is defined and pv_type == 'all')
+    - pv_number is defined and pv_number | int > 1
+
+- name: Set Fact for the various PV Types based on variables set above 2 of 8
+  set_fact:
+    rwo_pv_number: "{{ pv_number - rwx_pv_number }}"
+  when:
+    - rwo_pv_number is not defined or rwo_pv_number | int < 1
+    - rwx_pv_number is defined and rwx_pv_number | int > 1
+    - pv_type not is defined or (pv_type is defined and pv_type == 'all')
+    - pv_number is defined and pv_number | int > 1
+
+- name: Set Fact for the various PV Types based on variables set above 3 of 8
+  set_fact:
+    rwx_pv_number: "{{ pv_number - rwo_pv_number }}"
+  when:
+    - rwx_pv_number is not defined or rwx_pv_number | int < 1
+    - rwo_pv_number is defined and rwo_pv_number | int > 1
+    - pv_type is not defined or (pv_type is defined and pv_type == 'all')
+    - pv_number is defined and pv_number | int > 1
+
+- name: Set Fact for the various PV Types based on variables set above 4 of 8
+  set_fact:
+    rwx_pv_number: "{{ pv_number }}"
+  when:
+    - rwx_pv_number is not defined or rwx_pv_number | int < 1
+    - pv_type is defined and pv_type == 'rwx'
+    - pv_number is defined and pv_number | int > 1
+
+- name: Set Fact for the various PV Types based on variables set above 5 of 8
+  set_fact:
+    rwo_pv_number: "{{ pv_number }}"
+  when:
+    - rwo_pv_number is not defined or rwo_pv_number | int < 1
+    - pv_type is defined and pv_type == 'rwo'
+    - pv_number is defined and pv_number | int > 1
+
+- name: Set Fact for the various PV Types based on variables set above 6 of 8
+  set_fact:
+    pv_group_number: "{{ pv_sizes | length }}"
+  when:
+    - pv_sizes is defined and pv_sizes | length > 1
+
+- name: Set Fact for the various PV Types based on variables set above 7 of 8
+  set_fact:
+    rwo_pv_pg_number: '{{ (rwo_pv_number|int / pv_group_number|int)}}'
+  when:
+    - rwo_pv_number is defined and rwo_pv_number | int > 1
+
+- name: Set Fact for the various PV Types based on variables set above 8 of 8
+  set_fact:
+    rwx_pv_pg_number: '{{ (rwx_pv_number|int / pv_group_number|int) }}'
+  when:
+    - rwx_pv_number is defined and rwx_pv_number | int > 1
+
+- name: Copy PVs yaml file into place
+  template:
+    src: pvs.j2
+    dest: /tmp/pvs.yml
