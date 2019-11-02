@@ -75,3 +75,8 @@
   template:
     src: pvs.j2
     dest: /tmp/pvs.yml
+
+- name: Create the pvs on the OCP cluster
+  command: oc create -f /tmp/pvs.yml
+  register: pvs_created
+

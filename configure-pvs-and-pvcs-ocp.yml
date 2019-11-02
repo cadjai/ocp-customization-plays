@@ -46,7 +46,7 @@
   vars:
     - ocp_cluster_admin: claude
     - ocp_cluster_admin_password: 'r3dh4t1!'
-    - ocp_cluster_console_url: https://loadbalancer.e3fe.example.opentlc.com
+    - ocp_cluster_console_url: https://
     - ocp_cluster_console_port: 8443
     - openshift_cli: "oc"
     - pv_number: 50
