@@ -3,21 +3,77 @@
   hosts: nfs
   become: yes
   vars:
+    - pv_number: 50
+    - pv_sizes:
+        - 1Gi
+        - 2Gi
+        - 3Gi
+        - 5Gi
+        - 10Gi
+    - pv_vol_path: /srv/nfs/user-vols
+    - pv_vol_prefix: pv
+    - nfs_export_file: ocp-uservols.exports
+    - nfs_server_fqdn: ""
+
+  pre_tasks:
+  - name: Check that key values are set 
+    fail:
+      msg: "The Total PV Numner and type are required"
+    when:
+      - pv_number is not defined or (pv_number is defined and pv_number | int < 1)
+      - pv_sizes is not defined or ( pv_sizes is defined and pv_sizes | int < 1)
+      - pv_type is not defined or (pv_type is defined and not in ['all', 'rwx', 'rwo'])
+
   roles:
-  - create-nfs-pvs-for-ocp
+    - role: create-nfs-pvs-for-ocp
+
+  post_tasks:
+    - name: Fetch list of physical volumes for which to create the pv objects in the next role
+      command: ls -v "{{ pv_vol_path }}/"
+      register: volume_list
+
+    - name: Add the volume list to a dummy host
+      add_host:
+        name: "Volume_Host"
+        volume_list: "{{ volume_list }}"
 
 - name: Create pvs to be used on OCP
   hosts: localhost
   remote_user: ec2-user
   become: yes
   become_method: sudo
+  ### values for pv_types are all, rwx, rwo 
   vars:
     - ocp_cluster_admin: claude
     - ocp_cluster_admin_password: 'r3dh4t1!'
     - ocp_cluster_console_url: https://loadbalancer.e3fe.example.opentlc.com
     - ocp_cluster_console_port: 8443
     - openshift_cli: "oc"
+    - pv_number: 50
+    - pv_sizes:
+        - 1Gi
+        - 2Gi
+        - 3Gi
+        - 5Gi
+        - 10Gi
+    - pv_vol_path: /srv/nfs/user-vols
+    - pv_vol_prefix: pv
+    - pv_type: all 
+    - rwo_pv_number:
+    - rwx_pv_number:
+    - nfs_export_file: ocp-uservols.exports
+    - nfs_server_fqdn: ""
+    - volume_list: "{{ hostvars['Volume_Host']['volume_list'] }}"
+
   pre_tasks:
+  - name: Check that key values are set 
+    fail:
+      msg: "The Total PV Numner and type are required"
+    when:
+      - pv_number is not defined or (pv_number is defined and pv_number | int < 1)
+      - pv_sizes is not defined or ( pv_sizes is defined and pv_sizes | int < 1)
+      - pv_type is not defined or (pv_type is defined and not in ['all', 'rwx', 'rwo'])
+
   - name: Authenticate with the api
     command: "oc login -u {{ ocp_cluster_admin}} -p {{ ocp_cluster_admin_password }} {{ ocp_cluster_console_url }}:{{ ocp_cluster_console_port }} --insecure-skip-tls-verify=true"
     register: loginout
@@ -28,26 +84,23 @@
     command: oc config use-context {{ current_context.stdout }} 
     when:
       - current_context is defined and current_context.stdout is defined
-  - name: Import variable file from role 
-    include_vars: 
-      file: ./roles/create-nfs-pvs-for-ocp/defaults/main.yml
 
-  tasks:
-  - name: Copy RWX PVs yaml file into place
-    template:
-      src: ./roles/create-nfs-pvs-for-ocp/templates/rwx-pvs.j2
-      dest: /tmp/rwx-pvs.yml
-
-  - name: Copy RWO PVs yaml file into place
-    template:
-      src: ./roles/create-nfs-pvs-for-ocp/templates/rwo-pvs.j2
-      dest: /tmp/rwo-pvs.yml
-
-  - name: Create RWO PVs 
-    command: "{{ openshift_cli }} create -f /tmp/rwo-pvs.yml "
-    register: rwo_pvs_created
-
-  - name: Create RWX PVs 
-    command: "{{ openshift_cli }} create -f /tmp/rwx-pvs.yml "
-    register: rwx_pvs_created
-
+  roles:
+    - role: create-nfs-pvobjects-for-ocp
+      vars:
+        - pv_number: 50
+        - pv_sizes:
+            - 1Gi
+            - 2Gi
+            - 3Gi
+            - 5Gi
+            - 10Gi
+        - pv_vol_path: /srv/nfs/user-vols
+        - pv_vol_prefix: pv
+        - pv_type: all
+        - rwo_pv_number:
+        - rwx_pv_number:
+        - nfs_export_file: ocp-uservols.exports
+        - volume_list: "{{ hostvars['Volume_Host']['volume_list'] }}"
+        - nfs_server_fqdn: ""
+ 
