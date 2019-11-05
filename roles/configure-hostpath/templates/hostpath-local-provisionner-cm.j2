@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ provisioner_cm }}" 
+data:
+    storageClassMap: |
+        {{ provisioner_sc }}: 
+            hostDir: "{{ mount_path_prefix }}/{{ storage_class }}"
+            mountDir: "{{ mount_path_prefix }}/{{ storage_class }}"

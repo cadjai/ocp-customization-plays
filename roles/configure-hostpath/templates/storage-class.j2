@@ -1,0 +1,6 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+ name: "{{ provisioner_sc }}" 
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer

@@ -4,7 +4,9 @@
   assert:
     that:
       - use_hostpath is defined and use_hostpath | bool
-      - hostpath_mount_path is defined and hostpath_mount_path | length > 0
+      - hostpath_vol is defined and hostpath_vol != "" 
+      - storage_class is defined and storage_class != ""
+      - mount_path_prefix is defined and mount_path_prefix != ""
 
 - name: Set SEBool
   seboolean:
@@ -15,6 +17,39 @@
     - "{{ hostpath_sebools }}"
   register: sebool_set
 
+- name: Set file size 
+  set_fact:
+    fsize: "{{ (raw_file_size[0: 1]|int) * 1024 }}"
+    bscount: "{{ 1024 * 1024 }}" 
+  when:
+    - raw_file_size is defined and raw_file_size != "" and 'G' in raw_file_size
+
+- name: Set file size 
+  set_fact:
+    fsize: "{{ 1024|int }}"
+    bscount: "{{ 1024 * 1024 }}" 
+  when:
+    - raw_file_size is not defined or (raw_file_size is defined and raw_file_size != "" and 'G' not in raw_file_size)
+
+- name: Create raw file the require size to host the mount path
+  shell: dd if=/dev/zero of=/{{ hostpath_vol }}.img count=1 seek={{ fsize|int }} bs={{ bscount|int }} 
+  when:
+    - create_file | bool
+  register: file_created
+
+- name: Create XFS Filesystem
+  filesystem:
+    fstype: xfs
+    dev: "/{{ hostpath_vol }}.img"
+    resizefs: yes
+  when:
+    - create_file | bool
+  register: fs_created
+
+- name: Set Fully Qualified Host Mount Path
+  set_fact:
+    hostpath_mount_path: "{{ mount_path_prefix }}/{{ storage_class }}/{{ hostpath_vol }}"
+
 - name: Ensure the Mount Path exists
   file:
      path: "{{ hostpath_mount_path }}"
@@ -22,6 +57,14 @@
      mode: '0755'
      owner: 1000
      group: 1000
+
+- name: Mount host path
+  mount:
+    path: "{{ hostpath_mount_path }}"
+    src: "/{{ hostpath_vol }}.img"
+    fstype: xfs 
+    opts: "loop"
+    state: mounted 
 
 - name: Make sure the necessary required packages are installed on host
   yum:

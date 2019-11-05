@@ -1,7 +1,5 @@
 ---
-#- hosts: nodes 
 - hosts: node*:!masters:!infra* 
-  #remote_user: root 
   remote_user: ec2-user 
   become: yes
   become_method: sudo
@@ -9,6 +7,73 @@
     - role: configure-hostpath 
       vars:
         use_hostpath: true
-        #hostpath_vol: "/"
-        hostpath_mount_path: "/sonarqube-data/"
+        storage_class: "app-storage"
+        mount_path_prefix: "/mnt/local-storage"
+        hostpath_vol: "sonarqube-data"
+        create_file: true
+        raw_file_size: 10Gi
       tags: hostpath 
+
+- hosts: localhost
+  remote_user: ec2-user 
+  become: yes
+  become_method: sudo
+  vars:
+    - ocp_cluster_admin: claude
+    - ocp_cluster_admin_password: 'r3dh4t1!'
+    - ocp_cluster_console_url: https://
+    - ocp_cluster_console_port: 8443
+    - openshift_cli: "oc"
+    - provisioner_project: local-storage
+    - default_project_description: "Local Storage Provisioner Project"
+    - provisioner_sa: local-storage-admin
+    - provisioner_cm: local-volume-config 
+    - provisioner_sc: local-volume
+
+  pre_tasks:
+  - name: Authenticate with the api
+    command: "oc login -u {{ ocp_cluster_admin}} -p {{ ocp_cluster_admin_password }} {{ ocp_cluster_console_url }}:{{ ocp_cluster_console_port }} --insecure-skip-tls-verify=true"
+    register: loginout
+  - name: Retrieve login context
+    command: oc config current-context
+    register: current_context
+  - name: Set Config Context
+    command: oc config use-context {{ current_context.stdout }}
+    when:
+      - current_context is defined and current_context.stdout is defined
+  
+  tasks:
+  - name: Copy configMap into place
+    template:
+      src: ./roles/configure-hostpath/templates/hostpath-local-provisionner-cm.j2
+      dest: /tmp/hostpath-local-provisionner-cm.yml  
+    register: cm_copied
+
+  - name: Create Project to be used for local provisioner
+    command: "{{ openshift_cli }}  new-project {{ provisioner_project }} --description='{{ default_project_description }}' --display-name={{ provisioner_project }}"
+ 
+  - name: Create Local Provisioner Service Account
+    command: "{{ openshift_cli }}  serviceaccount {{ provisioner_sa }} -n {{ provisioner_project }}"
+    register: sa_created
+
+  - name: Grant Admin Privilege to the Provisioner Service Account
+    command: "{{ openshift_cli }} adm policy add-scc-to-user privileged -z {{ provisioner_sa }}"
+    register: scc_admin_granted
+
+  - name: Create ConfigMap for local provisioner
+    command: "{{ openshift_cli }} create -f /tmp/hostpath-local-provisionner-cm.yml -n {{ provisioner_project }}"
+    register: cm_created
+
+  - name: Create Provisioner
+    command: "{{ openshift_cli }} new-app -p CONFIGMAP={{ provisioner_cm }} -p SERVICE_ACCOUNT={{ provisioner_sa }} -p NAMESPACE={{ provisioner_project }} -p PROVISIONER_IMAGE=registry.redhat.io/openshift3/local-storage-provisioner:v3.11 local-storage-provisioner"
+
+  - name: Copy Provisioner Storage Class Config into place
+    template:
+      src: ./roles/configure-hostpath/templates/storage-class.j2
+      dest: /tmp/storage-class.yml  
+    register: sc_copied
+
+  - name: Create Storage Class for local provisioner
+    command: "{{ openshift_cli }} create -f /tmp/storage-class.yml -n {{ provisioner_project }}"
+    register: sc_created
+
