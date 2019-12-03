@@ -3,6 +3,13 @@
   remote_user: ec2-user 
   become: yes
   become_method: sudo
+  vars:
+    use_hostpath: true
+    storage_class: "app-storage"
+    mount_path_prefix: "/mnt/local-storage"
+    hostpath_vol: "sonarqube-data"
+    create_file: true
+    raw_file_size: 10Gi
   roles:
     - role: configure-hostpath 
       vars:
@@ -19,6 +26,10 @@
   become: yes
   become_method: sudo
   vars:
+    - use_hostpath: true
+    - storage_class: "app-storage"
+    - mount_path_prefix: "/mnt/local-storage"
+    - hostpath_vol: "sonarqube-data"
     - ocp_cluster_admin: claude
     - ocp_cluster_admin_password: 'r3dh4t1!'
     - ocp_cluster_console_url: https://
@@ -51,18 +62,34 @@
 
   - name: Create Project to be used for local provisioner
     command: "{{ openshift_cli }}  new-project {{ provisioner_project }} --description='{{ default_project_description }}' --display-name={{ provisioner_project }}"
+    failed_when: "local_provisioner_ns_created.rc >= 1 and not 'AlreadyExists' in local_provisioner_ns_created.stderr"
+    register: local_provisioner_ns_created
  
   - name: Create Local Provisioner Service Account
     command: "{{ openshift_cli }}  serviceaccount {{ provisioner_sa }} -n {{ provisioner_project }}"
+    failed_when: "sa_created.rc >=1 and not 'AlreadyExists' in sa_created.stderr"
     register: sa_created
 
   - name: Grant Admin Privilege to the Provisioner Service Account
     command: "{{ openshift_cli }} adm policy add-scc-to-user privileged -z {{ provisioner_sa }}"
+    failed_when: "scc_admin_granted.rc >=1 and not 'AlreadyExists' in scc_admin_granted.stderr"
     register: scc_admin_granted
 
   - name: Create ConfigMap for local provisioner
     command: "{{ openshift_cli }} create -f /tmp/hostpath-local-provisionner-cm.yml -n {{ provisioner_project }}"
+    failed_when: "cm_created.rc >=1 and not 'AlreadyExists' in cm_created.stderr"
     register: cm_created
+
+  - name: Copy Provisioner Template into place
+    template:
+      src: ./roles/configure-hostpath/templates/local-provisioner-template.j2
+      dest: /tmp/local-provisioner-template.yml
+    register: template_copied
+
+  - name: Create Template for local provisioner
+    command: "{{ openshift_cli }} create -f /tmp/local-provisioner-template.yml -n {{ provisioner_project }}"
+    failed_when: "template_created.rc >=1 and not 'AlreadyExists' in template_created.stderr"
+    register: template_created
 
   - name: Create Provisioner
     command: "{{ openshift_cli }} new-app -p CONFIGMAP={{ provisioner_cm }} -p SERVICE_ACCOUNT={{ provisioner_sa }} -p NAMESPACE={{ provisioner_project }} -p PROVISIONER_IMAGE=registry.redhat.io/openshift3/local-storage-provisioner:v3.11 local-storage-provisioner"
