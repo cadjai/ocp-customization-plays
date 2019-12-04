@@ -123,15 +123,15 @@ backend atomic-openshift-api
 ### Router Config
 frontend router-http
     bind *:80
-    default_backend router-backend-http
+    default_backend atomic-openshift-apps-http
 
 frontend router-https
     bind *:443
     mode tcp
     option tcplog
-    default_backend router-backend-https
+    default_backend atomic-openshift-apps-https
 
-backend router-backend-http
+backend atomic-openshift-apps-http
     balance source
     mode http
     option httpclose
@@ -144,7 +144,7 @@ backend router-backend-http
 {% endif %}
 {% endfor %}
 
-backend atomic-openshift-apps-http
+backend atomic-openshift-apps-https
     balance source
     mode tcp
 {% set myindex = 0 %}
