@@ -55,12 +55,15 @@
 
     - name: Create Directory for the External Registry FQDN:Port 
       file:
-        path: /etc/docker/cert.d/{{ ca_sub_dir }}
+        path: "{{ item }}" 
         state: directory
         mode: 0777
         group: root
         owner: root
       register: docker_ca_dir_created
+      with_items: 
+        - "/etc/docker/cert.d/{{ ca_sub_dir }}"
+        - "/etc/containers/cert.d/{{ ca_sub_dir }}"
 
     - name: Set Fact for certificate to copy
       set_fact:
@@ -74,13 +77,18 @@
       copy:
         remote_src: yes
         src: {{ ca_file }}
-        dest: {{ docker_ca_dir_created.path }}
+        #dest: {{ docker_ca_dir_created.path }}
+        dest: "{{ item }}/"
         mode: 0777
         group: root
         owner: root
       when:
-        - docker_ca_dir_created is defined and docker_ca_dir_created.path is defined
+        - docker_ca_dir_created is defined
+      #  -  docker_ca_dir_created.path is defined
       register: cert_copied_to_docker
+      with_items: 
+        - "/etc/docker/cert.d/{{ ca_sub_dir }}"
+        - "/etc/containers/cert.d/{{ ca_sub_dir }}"
 
     - name: Restart the docker daemon 
       systemd:
