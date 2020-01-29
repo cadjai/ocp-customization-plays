@@ -1,0 +1,3 @@
+[submodule "roles/sync-content-for-disconnected-ocp4-install"]
+	path = roles/sync-content-for-disconnected-ocp4-install
+	url = github.com:cadjai/sync-content-for-disconnected-ocp4-install.git
