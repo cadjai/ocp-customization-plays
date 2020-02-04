@@ -11,3 +11,4 @@ enable_auth_on_external_registry: false
 external_registry_auth_dir: '/etc/docker-distribution/registry_passwd'
 external_registry_auth_file: 'registry_passwd'
 external_registry_config_dir: '/etc/docker-distribution/registry'
+external_registry_client_cas:

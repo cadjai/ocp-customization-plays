@@ -16,6 +16,11 @@ http:
     tls:
       certificate: "{{ external_registry_dir }}/{{ external_registry_cert | basename}}"
       key: "{{ external_registry_dir }}/{{ external_registry_key | basename }}"
+{% if external_registry_client_cas s defined and external_registry_client_cas | length > 0 %}
+      clientcas:
+{% for cltca in external_registry_client_cas %}
+        - "{{ external_registry_dir }}/{{ cltca }}"
+{% endfor %}
     host: "https://{{ external_registry_fqdn }}:{{ external_registry_port }}"
 {% endif %}
     secret: "{{ external_registry_secret }}" 
