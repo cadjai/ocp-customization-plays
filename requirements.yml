@@ -22,3 +22,15 @@
 - src: https://github.com/cadjai/create-nfs-based-pvobjects-for-OpenShift-Container-Platform
   scm: git
   name: create-nfs-pvobjects-for-ocp
+
+- src: https://github.com/cadjai/configure-hostpath-on-nodes-for-OpenShift-Container-Platform
+  scm: git
+  name: configure-hostpath
+
+- src: https://github.com/cadjai/disable-ipv6-on-rhel-hosts-persistently
+  scm: git
+  name: disable-ipv6-on-all-hosts
+
+- src: https://github.com/cadjai/set-static-ip-for-hosts.git
+  scm: git
+  name: static-ip
