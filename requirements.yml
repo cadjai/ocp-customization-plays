@@ -1,0 +1,24 @@
+
+- src: https://github.com/cadjai/install-and-configure-standalone-docker-registry 
+  scm: git
+  name: install-and-configure-external-docker-registry
+
+- src: https://github.com/cadjai/sync-content-for-disconnected-ocp4-install 
+  scm: git
+  name: sync-content-for-disconnected-ocp4-install
+
+- src: https://github.com/cadjai/configure-ocp-to-use-secured-external-registry
+  scm: git
+  name: configure-ocp-for-secured-external-registry
+
+- src: https://github.com/cadjai/configure-ha-proxy-as-loadbalancer-for-the-router-on-ocp3
+  scm: git
+  name: config-lb-for-router
+
+- src: https://github.com/cadjai/create-nfs-persitent-volumes-for-OpenShift
+  scm: git
+  name: create-nfs-pvs-for-ocp
+
+- src: https://github.com/cadjai/create-nfs-based-pvobjects-for-OpenShift-Container-Platform
+  scm: git
+  name: create-nfs-pvobjects-for-ocp
