@@ -1,7 +1,0 @@
----
-# defaults file for roles/configure-external-jenkins-slave
-jenkins_route: ''
-jenkins_user: ''
-#jenkins_node_name: ''
-jenkins_node_name: 'openscap'
-jenkins_ns: ''
