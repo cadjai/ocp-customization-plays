@@ -1,0 +1,6 @@
+---
+- name: Configure OCP Hosts to communicate with the secured external registry
+  hosts: localhost
+  become: yes
+  roles:
+  - sync-content-for-disconnected-ocp4-install
