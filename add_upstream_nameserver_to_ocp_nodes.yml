@@ -1,0 +1,39 @@
+---
+- hosts: nodes 
+  remote_user: ec2-user 
+  become: yes
+  become_method: sudo
+  vars:
+    additional_nameservers: 
+      -
+
+  tasks:
+  - name: Add additional upstream nameserver ocp dnsmasq
+    when:
+      - additional_nameservers is defined
+      - additional_nameservers | length > 0 
+    block:
+      - name: Add nameserver entry to DNSMASQ upstream conf
+        lineinfile:
+          backup: yes
+          path: /etc/dnsmasq.d/origin-upstream-dns.conf
+          line: 'server={{ item }}'
+          state: present
+        with_items:
+          - "{{ additional_nameservers }}"
+        when:
+          - item != ''
+        register: upstream_ns_added
+
+      - name: Update dnsmasq conf to ensure requests are sent to all nameservers
+        lineinfile:
+          backup: yes
+          path: /etc/dnsmasq.d/origin-dns.conf
+          line: 'all-servers'
+          insertbefore: '# End of config'
+          state: present
+        when:
+          - upstream_ns_added is defined
+          - "'All items completed' in upstream_ns_added.msg" 
+          - upstream_ns_added.results | length > 0 
+        register: upstream_ns_conf_updateda
